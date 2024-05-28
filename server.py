@@ -1,4 +1,6 @@
-import socket 
+import socket
+import json 
+import threading
   
 def start_server(ip, port): 
 
@@ -11,7 +13,25 @@ def start_server(ip, port):
     print(f"Servidor escuchando en {ip}:{port}") 
 
     return server_socket
-  
+
+def handle_clients(client_socket, addr, connected_clients):
+    client_id = addr[1]
+    print(f"Conexión establecida con {addr}") 
+    client_socket.send(bytes(f"{client_id}","UTF-8"))
+    data = client_socket.recv(1024).decode() 
+    print(f"Usuario: {data} esta conectado")
+    while True:
+        try:
+            data = client_socket.recv(1024).decode()
+            if json.loads(data)["msg"] == "chao": break
+            if not data: break
+            print(f"Usuarios conectados {len(connected_clients)}")
+            print(json.loads(data)["msg"])    
+        except ConnectionResetError:
+            break
+    client_socket.close()
+    connected_clients.remove(client_socket) 
+    print(f"Conexion con {addr} cerrada")
 
 if __name__ == "__main__": 
 
@@ -19,19 +39,16 @@ if __name__ == "__main__":
   
     connected_clients = []
 
-    print("==== Log del servidor ====")
-    client_socket, addr = server_socket.accept()
-    print(f"Conexión establecida con {addr}") 
-    data = client_socket.recv(1024).decode() 
-    connected_clients.append(data)
-    for client in connected_clients:
-        username = client.encode()
-        print(f"Usuario {username} is connected")
-        client_socket.send(bytes(f"Usuario {username} is connected","UTF-8"))
-    print(f"Usuarios conectados {len(connected_clients)}")
-    while True: 
-        if not data: break
-        data = client_socket.recv(1024).decode()
-        print(data)    
-    client_socket.close()
-    connected_clients.pop() 
+    try:
+        while True: 
+            client_socket, addr = server_socket.accept()
+            connected_clients.append(client_socket)
+            client_thread = threading.Thread(target=handle_clients, args=(client_socket, addr, connected_clients))
+            client_thread.start()
+            print("==== Log del servidor ====")
+    except KeyboardInterrupt:
+        print("Servidor detenido")
+    finally:
+        for client in connected_clients:
+            client.close()
+        server_socket.close()

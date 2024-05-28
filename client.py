@@ -1,6 +1,7 @@
-import socket
-import random 
+import socket 
 import json
+
+client_id = None
 
 def start_client(ip, port, username): 
 
@@ -11,12 +12,11 @@ def start_client(ip, port, username):
     client_socket.send(username.encode()) 
 
     response = client_socket.recv(1024).decode() 
+    client_id = response
 
-    print(f"Respuesta del servidor: {response}")
+    print(f"Tu Id de cliente es: {client_id}")
 
-    #client_socket.close()
-
-    return client_socket
+    return client_socket, client_id
 
   
 
@@ -25,17 +25,15 @@ if __name__ == "__main__":
     server_ip = input("IP del servidor: ")
     port = int(input("Port: "))
     username = input("Escriba su nombre: ")
-    client_id = random.randrange(9999)
     try:
+        client_socket, client_id = start_client(server_ip, port, username)
         while True:
-            client_socket = start_client(server_ip, port, username)
             message = input(">> ")
             message_dict = {"id": client_id, "msg": message}
             data = json.dumps(message_dict)
             client_socket.sendall(data.encode())
-            client_socket.close()
     except socket.error as e:
         print(str(e))
-    #finally:
-        #client_socket.close()
+    finally:
+        client_socket.close()
     
